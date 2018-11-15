@@ -1,0 +1,180 @@
+// package the generated Java class lives in; no need to change this
+%package "parser";
+
+// name of the generated Java class; no need to change this
+%class "Parser";
+
+// no need to change this either
+%embed {:
+	// turn off automated error recovery
+	@Override
+	protected void recoverFromError(Symbol token, TokenStream in) throws java.io.IOException, Exception {
+		super.recoverFromError(new Symbol(0), in);
+	}
+:};
+
+// the list of all terminals; no need to change this
+%terminals MODULE, INT, VOID, IF, ELSE, WHILE, RETURN, BREAK, BOOLEAN, PUBLIC, TRUE, FALSE,
+           INT_LITERAL, STRING_LITERAL, ID, TYPE, IMPORT,
+           PLUS, MINUS, TIMES, DIV, MOD, EQEQ, NEQ, LEQ, GEQ, LT, GT,
+           LBRACKET, RPAREN, COMMA, RCURLY, LCURLY, SEMICOLON, RBRACKET, LPAREN, EQL;
+           
+// declaration of start symbol; no need to change this
+%goal Module;
+
+/* TODO: Flesh out the rule for Module, and add rules for other nonterminals. Here is an example
+         of a rule you may want to add:
+         
+   Accessibility = PUBLIC
+		  |
+		  ;
+  */
+
+Module = MODULE ID LCURLY Imports Declarations RCURLY;
+
+Imports = Imports Import
+		  | 
+		  ;
+Import = IMPORT ID SEMICOLON;
+
+Declarations = Declarations Declaration
+			|
+			;
+			
+Declaration = Function_Declaration
+			|Field_Declaration
+			|Type_Declaration
+			;
+
+Function_Declaration = Accessibility TypeName ID LPAREN Parameter_List RPAREN LCURLY Statements RCURLY;
+
+Field_Declaration  = Accessibility TypeName ID SEMICOLON;
+
+Type_Declaration = Accessibility TYPE ID EQL STRING_LITERAL SEMICOLON;
+
+Accessibility = PUBLIC
+			  |
+			  ;
+TypeName = Primitive_Type
+		 |Array_Type
+		 |ID
+		 ;
+		
+Primitive_Type = VOID
+				|BOOLEAN
+				|INT
+				;
+
+Array_Type = Array_Type LBRACKET RBRACKET
+			|Primitive_Type LBRACKET RBRACKET
+			|ID LBRACKET RBRACKET
+			;
+//getting LL(1) grammar for parameter_list
+Parameter_List = Parameter Parameter_List_Tail
+				|
+				;
+
+Parameter_List_Tail = COMMA Parameter Parameter_List_Tail
+					|
+					;
+			
+Parameter = TypeName ID;
+
+Statements = Statement Statements
+			|
+			;
+Statement = Local_Variable_Declaration
+		|Block_Statements
+		|If_Statement
+		|While_Statement
+		|Break_Statement
+		|Return_Statement
+		|Expr_Statement
+		; 
+
+Local_Variable_Declaration = TypeName ID SEMICOLON;
+	
+Block_Statements = LCURLY Statements RCURLY;
+
+If_Statement = IF LPAREN Expression RPAREN Statement_Tail;
+
+Statement_Tail = Statement
+				|Statement ELSE Statement;
+While_Statement = WHILE LPAREN Expression RPAREN Statement;
+
+Break_Statement = BREAK SEMICOLON;
+
+Return_Statement =  RETURN SEMICOLON
+				|RETURN Expression SEMICOLON
+				;
+				
+Expr_Statement = Expression SEMICOLON;
+
+Expression = Assignment
+			| Right_Hand_Side_Expression
+			;
+
+Assignment = Left_Hand_Side_Expression EQL Expression;
+
+Left_Hand_Side_Expression = ID Array_Access; // LHSExpression needs minimum of 1 array access
+
+Array_Access = LBRACKET Expression RBRACKET Array_Access
+			|
+			; //used to get id [expr]+
+
+Right_Hand_Side_Expression = Arithmetic_Expression
+							|Arithmetic_Expression Comparison_Operator Arithmetic_Expression
+							;
+
+Comparison_Operator = EQEQ
+					|NEQ
+					|LT
+					|LEQ
+					|GT
+					|GEQ
+					;
+// have to convert arithmetic expression into LL(1) grammar
+Arithmetic_Expression = Term Arithmetic_Expression_Tail;
+
+Arithmetic_Expression_Tail = Additive_Operator Term Arithmetic_Expression_Tail
+							|
+							;
+
+Additive_Operator = PLUS
+					|MINUS
+					;
+				
+//convert to LL(1) grammar
+Term = Factor Term_Tail;
+Term_Tail = Multiplicative_Operator Term Term_Tail
+			|
+			;
+Multiplicative_Operator = TIMES
+						|DIV
+						|MOD
+						;
+						
+Factor = Primary_Expression
+		|MINUS Factor
+		;
+
+Primary_Expression = Left_Hand_Side_Expression
+					|ID LPAREN Expression_List RPAREN
+					|LBRACKET Expression_List_Non_Empty RBRACKET
+					|STRING_LITERAL
+					|INT_LITERAL
+					|BOOLEAN_LITERAL
+					|LPAREN Expression RPAREN
+					;
+					
+BOOLEAN_LITERAL = TRUE
+				|FALSE
+				;
+Expression_List = Expression Expression_List_Tail
+				|
+				;
+Expression_List_Tail = COMMA Expression Expression_List_Tail
+					|
+					;
+Expression_List_Non_Empty = Expression Expression_List_Tail;
+
